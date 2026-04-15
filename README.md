@@ -98,14 +98,20 @@ Frontend: React + TypeScript (Vite)
 Both applications must be running at the same time according to readme instruction in backend and frontend.
 
 for backend:
+
+```bash
 cd backend/node-express
 npm install
 npm run seed     # Seeds the SQLite database from seed-data/matches.json
 npm run dev      # Starts the dev server on http://localhost:3008
+```
 for frontend:
+
+```bash
 cd frontend
 npm install
 npm run dev     # Starts on http://localhost:5173
+```
 
 See each project's README for detailed setup instructions:
 
