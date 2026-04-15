@@ -1,0 +1,30 @@
+{
+  "name": "junior-challenge",
+  "version": "1.0.0",
+  "description": "Unosquare Graduate / Junior SWE Coding Challenge",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UnosquareCOE/junior-challenge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/UnosquareCOE/junior-challenge/issues"
+  },
+  "homepage": "https://github.com/UnosquareCOE/junior-challenge#readme",
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/leaflet": "^1.9.21",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9"
+  }
+}

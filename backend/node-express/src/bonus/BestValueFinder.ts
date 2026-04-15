@@ -8,34 +8,7 @@ import {
 import { buildRoute } from '../utils/buildRoute';
 import { calculateDistance } from '../utils/haversine';
 
-/**
- * BestValueFinder — BONUS CHALLENGE #1
- *
- * Finds the best value combination of matches that:
- * 1. Includes at least 5 matches
- * 2. Covers all 3 countries (USA, Mexico, Canada)
- * 3. Fits within the budget (or gets as close as possible)
- * 4. Maximizes the number of matches for the money
- *
- * ============================================================
- * WHAT YOU NEED TO IMPLEMENT:
- * ============================================================
- *
- * The findBestValue() method — Find the best combination by:
- *   1. Return an error result if no matches are available
- *   2. Find the combination that fits the budget with the most matches
- *   3. If nothing fits the budget, return the closest option
- *
- * ============================================================
- * HELPER METHODS PROVIDED (no changes needed):
- * ============================================================
- *
- * - generateValidCombinations(matches, targetSize) - generates combinations meeting country requirements
- * - calculateTotalCost(matches, originCity, flightPrices) - calculates total cost
- * - buildResult(combination, cost, withinBudget, budget, originCity, flightPrices) - builds success response
- * - buildErrorResult(message) - builds error response
- *
- */
+
 
 const REQUIRED_COUNTRIES = ['USA', 'Mexico', 'Canada'];
 const MINIMUM_MATCHES = 5;
@@ -57,6 +30,9 @@ const MINIMUM_MATCHES = 5;
  * @param originCity The starting city
  * @returns BestValueResult with the best combination found
  */
+
+
+// Task #5 - Bonus #1 completing the findBestValue function 
 export function findBestValue(
   allMatches: MatchWithCity[],
   budget: number,
@@ -64,8 +40,64 @@ export function findBestValue(
   flightPrices: FlightPrice[],
   originCity: City
 ): BestValueResult {
-  // TODO: Implement this function
-  return buildErrorResult('Not implemented yet');
+ 
+      if (!allMatches.length) {
+        return buildErrorResult('No matches available'); // return error if no matches available
+      }
+
+      let bestWithinBudget: MatchWithCity[] | null = null; // track best combination within budget
+      let bestWithinBudgetCost = 0;
+
+      let closestOverBudget: MatchWithCity[] | null = null;// track closest combination over budget
+      let closestOverBudgetCost = Infinity; 
+
+      // main loop to generate combinations starting from minimum matches to all matches
+      for (let size = MINIMUM_MATCHES; size <= allMatches.length; size++) {
+
+        const combinations = generateValidCombinations(allMatches, size); // generate valid combinations of the current size that meet country requirements
+
+        for (const combo of combinations) {
+
+          const cost = calculateTotalCost(combo, originCity, flightPrices); // calculate total cost of the current combination (tickets + flights + accommodation)
+          // prefer combinations within budget, but track closest over budget if none fit
+          if (cost <= budget) {
+            if (!bestWithinBudget || combo.length > bestWithinBudget.length) {
+              bestWithinBudget = combo;
+              bestWithinBudgetCost = cost;
+            }
+          } else {
+            if (cost < closestOverBudgetCost) {
+              closestOverBudget = combo;
+              closestOverBudgetCost = cost;
+            }
+          }
+        }
+      }
+
+      if (bestWithinBudget) {
+        return buildResult(
+          bestWithinBudget,
+          bestWithinBudgetCost,
+          true,
+          budget,
+          originCity,
+          flightPrices
+        );
+      }
+
+      if (closestOverBudget) {
+        return buildResult(
+          closestOverBudget,
+          closestOverBudgetCost,
+          false,
+          budget,
+          originCity,
+          flightPrices
+        );
+      }
+
+      return buildErrorResult('No valid combinations found');
+
 }
 
 // ============================================================

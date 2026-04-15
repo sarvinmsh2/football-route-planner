@@ -27,7 +27,7 @@ Use AI as a productivity booster, not a replacement for understanding. The goal 
 
 You are expected to complete the following:
 
-1. **Implement API endpoints** — Choose one backend (Node/Express, Java/Spring, Python/Flask, or .NET) and implement all REST endpoints
+1. **Implement API endpoints** — Choose one backend (Node/Express, Java/Spring, Python/Flask, or .NET) and implement all REST endpoints ** node express chosen for the backend with changes implemented**
 2. **Implement route optimisation** — Build a `NearestNeighbourStrategy` using the Strategy Pattern
 3. **Write unit tests** — Add tests to verify your route optimisation algorithm
 4. **Implement frontend map component** — Build a `<RouteMap />` component using react-leaflet

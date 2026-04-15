@@ -2,99 +2,47 @@ import { RouteStrategy, MatchWithCity, OptimisedRoute, City } from './RouteStrat
 import { buildRoute } from '../utils/buildRoute';
 import { calculateDistance } from '../utils/haversine';
 
-/**
- * NearestNeighbourStrategy — YOUR TASK #3
- *
- * Route optimisation using nearest-neighbour heuristic.
- *
- * ============================================================
- * WHAT YOU NEED TO IMPLEMENT:
- * ============================================================
- *
- * 1. optimise() method - The nearest-neighbour algorithm:
- *    - Sort matches by kickoff date
- *    - Group matches by date
- *    - For each date, pick the match nearest to your current city
- *    - Track your current city as you process each match
- *
- * 2. validateRoute() method - Validation checks:
- *    - Must have at least 5 matches
- *    - Must visit all 3 countries (USA, Mexico, Canada)
- *    - Set feasibility, warnings, and country coverage on the route
- *
- * ============================================================
- * HELPER METHODS PROVIDED (no changes needed):
- * ============================================================
- *
- * - buildRoute(orderedMatches, strategyName) - Builds the route from ordered matches
- * - calculateDistance(lat1, lon1, lat2, lon2) - Calculates distance between coordinates
- *
- * ============================================================
- */
+// Task 3: Nearest Neighbour Strategy
 export class NearestNeighbourStrategy implements RouteStrategy {
   private static readonly STRATEGY_NAME = 'nearest-neighbour';
   private static readonly REQUIRED_COUNTRIES = ['USA', 'Mexico', 'Canada'];
   private static readonly MINIMUM_MATCHES = 5;
 
-  // ============================================================
-  //  Nearest Neighbour Algorithm
-  // ============================================================
-  //
-  // TODO: Implement the nearest-neighbour selection
-  //
-  // Steps:
-  //   1. Handle empty/null matches - return createEmptyRoute()
-  //   2. Sort matches by kickoff date
-  //   3. Group matches by date (use match.kickoff.split('T')[0])
-  //   4. For each date (in sorted order):
-  //      - If only 1 match that day, add it to orderedMatches
-  //      - If multiple matches, pick the nearest to currentCity
-  //   5. Track currentCity as you process each match
-  //   6. Build and validate route using buildRoute() and validateRoute()
-  //
-  // Hints:
-  //   - Use calculateDistance(lat1, lon1, lat2, lon2) for distance
-  //   - Group by date: match.kickoff.split('T')[0]
-  //   - The first match in chronological order is your starting point
-  //
-  // ============================================================
 
   optimise(matches: MatchWithCity[], originCity?: City): OptimisedRoute {
-    // TODO: Your code here
+    if (!matches || matches.length === 0) return this.createEmptyRoute();
+    // step 1 sort matches by time of the kickoff from matches.ts
+    const sorted = [...matches].sort((a,b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()); // algorithm uses kickoff to know which matches happen in the same day 
+    // step 2 group by date
+    const byDate = new Map <string, MatchWithCity[]>();
+    for (const match of sorted){
+      const date = match.kickoff.split('T')[0];
+      if(!byDate.has(date)) byDate.set(date,[]);
+      byDate.get(date)!.push(match);
+    }
+    //step 3 for each day pick nearest match
     const orderedMatches: MatchWithCity[] = [];
+    let currentCity = originCity ?? sorted[0].city; // start from origin city or if not provided the first match
+    // loop to process each day 
+    for (const[,dayMatches] of byDate){
+      let chosen = dayMatches.length === 1 // if there's only one match attend it otherwise calculate nearst distance
+        ?dayMatches[0]
+        :dayMatches.reduce((nearest,candidate)=>{ 
+          const dNearest = calculateDistance(currentCity.latitude, currentCity.longitude,
+            nearest.city.latitude, nearest.city.longitude ) 
+          const dCandidate = calculateDistance(currentCity.latitude, currentCity.longitude,
+            candidate.city.latitude, candidate.city.longitude);
+          return dCandidate < dNearest ? candidate: nearest;
+          });
+     orderedMatches.push(chosen);
+     currentCity = chosen.city;
 
-    // TODO: Your code here
-
+    }
     const route = this.buildRoute(orderedMatches, originCity);
     this.validateRoute(route, orderedMatches);
     return route;
   }
 
-  // ============================================================
-  //  Validation — YOUR TASK
-  // ============================================================
-  //
-  // TODO: Implement route validation
-  //
-  // Check the following constraints:
-  //   1. Minimum matches - must have at least MINIMUM_MATCHES (5)
-  //   2. Country coverage - must visit all REQUIRED_COUNTRIES (USA, Mexico, Canada)
-  //
-  // Set on the route:
-  //   - route.feasible = true/false
-  //   - route.warnings = list of warning messages
-  //   - route.countriesVisited = list of countries
-  //   - route.missingCountries = list of missing countries
-  //
-  // ============================================================
-
-  private validateRoute(route: OptimisedRoute, matches: MatchWithCity[]): void {
-    // TODO: Your implementation
-  }
-
-  // ============================================================
-  //  Helper Methods (provided - no changes needed)
-  // ============================================================
 
   /**
    * Creates an empty route with appropriate warnings.
@@ -114,6 +62,7 @@ export class NearestNeighbourStrategy implements RouteStrategy {
   /**
    * Builds an optimised route from ordered matches, including origin city distance.
    */
+  // build the route this is later used in optimise
   private buildRoute(orderedMatches: MatchWithCity[], originCity?: City): OptimisedRoute {
     const route = buildRoute(orderedMatches, NearestNeighbourStrategy.STRATEGY_NAME);
 
@@ -131,5 +80,17 @@ export class NearestNeighbourStrategy implements RouteStrategy {
     }
 
     return route;
+  }
+  private validateRoute(route: OptimisedRoute, matches: MatchWithCity[]): void{
+    const warnings: string [] = [];
+    if(matches.length<5) warnings.push('Need at least 5 matches') // make sure at least 5 matches selected
+    const countriesVisited = [...new Set(matches.map(m => m.city.country))];
+    const missingCountries = NearestNeighbourStrategy.REQUIRED_COUNTRIES.filter(c => !countriesVisited.includes(c));
+    if (missingCountries.length > 0) warnings.push('Missing: ' + missingCountries.join(', '));
+    route.feasible = warnings.length === 0;  // ← feasible only if no warnings
+    route.warnings = warnings;
+    route.countriesVisited = countriesVisited;
+    route.missingCountries = missingCountries;
+
   }
 }

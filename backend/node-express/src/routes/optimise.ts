@@ -1,108 +1,76 @@
 import { Router } from 'express';
 import * as MatchModel from '../models/Match';
 import * as CityModel from '../models/City';
+import * as FlightPriceModel from '../models/FlightPrice';
 import { NearestNeighbourStrategy } from '../strategies/NearestNeighbourStrategy';
-// Tip: You can also import DateOnlyStrategy to compare results
-// import { DateOnlyStrategy } from '../strategies/DateOnlyStrategy';
+import { calculate } from '../utils/CostCalculator';
+import { findBestValue } from '../bonus/BestValueFinder';
 
 const router = Router();
 
-/**
- * Route Optimisation Routes — YOUR TASKS #3 and #5
- */
-
-// ============================================================
-//  POST /api/route/optimise — YOUR TASK #3
-// ============================================================
-//
-// TODO: Implement this endpoint
-//
-// Request body: { matchIds: ["match-1", "match-5", "match-12", ...], originCityId: "city-atlanta" }
-//
-// Steps:
-//   1. Extract matchIds and originCityId from req.body
-//   2. Fetch the full match data: MatchModel.getByIds(matchIds)
-//   3. Fetch origin city: CityModel.getById(originCityId)
-//   4. Create a strategy instance: new NearestNeighbourStrategy()
-//      (or new DateOnlyStrategy() to test with the working example first)
-//   5. Call strategy.optimise(matches, originCity)
-//   6. Return the optimised route as JSON
-//
-// TIP: Start by using DateOnlyStrategy to verify your endpoint works,
-// then switch to NearestNeighbourStrategy once you've implemented it.
-//
-// ============================================================
-
+// POST /api/route/optimise — Task #3
 router.post('/optimise', (req, res) => {
-  // TODO: Replace with your implementation
-  res.status(200).json({});
+  const { matchIds, originCityId } = req.body; // read matchIds and originCityId from the request body
+
+  if (!matchIds || !Array.isArray(matchIds)) {
+    res.status(400).json({ error: 'matchIds array is required' });  //validate that matchIds is provided and is an array and return a 400 Bad Request error if not
+    return;
+  } 
+
+  const matches = MatchModel.getByIds(matchIds); // fetch match data from the model using the provided matchIds this will return an array of match objects corresponding to the provided IDs
+
+  const strategy = new NearestNeighbourStrategy();
+   const originCity = CityModel.getById(originCityId); // retrieve origin city if provided
+  const route = strategy.optimise(matches, originCity); // generate optimised route using the strategy's optimise method, passing in the matches and the origin city
+
+  res.json(route); // return the optimised route as a JSON response to the client
 });
 
-// ============================================================
-//  POST /api/route/budget — YOUR TASK #5
-// ============================================================
-//
-// TODO: Implement this endpoint
-//
-// Request body:
-// {
-//   "budget": 5000.00,
-//   "matchIds": ["match-1", "match-5", "match-12", ...],
-//   "originCityId": "city-atlanta"
-// }
-//
-// Steps:
-//   1. Extract budget, matchIds, and originCityId from req.body
-//   2. Fetch matches by IDs: MatchModel.getByIds(matchIds)
-//   3. Fetch origin city: CityModel.getById(originCityId)
-//   4. Fetch all flight prices from the database
-//   5. Use the CostCalculator to calculate the budget result
-//   6. Return the BudgetResult as JSON
-//
-// Hint: Import and use the CostCalculator from '../utils/CostCalculator'
-//
-// IMPORTANT CONSTRAINTS:
-//   - User MUST attend at least 1 match in each country (USA, Mexico, Canada)
-//   - If the budget is insufficient, return feasible=false with:
-//     - minimumBudgetRequired: the actual cost
-//     - suggestions: ways to reduce cost
-//   - If countries are missing, return feasible=false with:
-//     - missingCountries: list of countries not covered
-//
-// ============================================================
-
+// POST /api/route/budget — Task #5
+// calculates the best travel route within a user-defined budget 
 router.post('/budget', (req, res) => {
-  // TODO: Replace with your implementation
-  res.status(200).json({});
+  const { budget, matchIds, originCityId } = req.body; // extract budget, matchIds, and originCityId from the request body
+
+  if (!matchIds || !Array.isArray(matchIds) || budget == null) {
+    res.status(400).json({ error: 'budget and matchIds are required' }); // error handling for matchIds
+    return;
+  }
+
+  const matches = MatchModel.getByIds(matchIds); //retrieve selected matches using the provided matchIds, this will return an array of match objects corresponding to the provided IDs
+  const originCity = CityModel.getById(originCityId); //retrieve the origin city using the provided originCityId, this will return a city object corresponding to the provided ID
+
+  if (!originCity) {
+    res.status(400).json({ error: 'Invalid originCityId' }); // error handling for originCityId
+    return;
+  }
+
+  const flightPrices = FlightPriceModel.getAll(); // retrieve all flight prices from the model, this will return an array of flight price objects
+  const result = calculate(matches, budget, originCityId, flightPrices, originCity); //use calculate function from CostCalculator utility to calculate the best travel route within the specified budget, passing in the matches, budget, originCityId, flight prices, and origin city
+
+  res.json(result); // return results as Json format
 });
 
-// ============================================================
-//  POST /api/route/best-value — BONUS CHALLENGE #1
-// ============================================================
-//
-// TODO: Implement this endpoint (BONUS)
-//
-// Request body:
-// {
-//   "budget": 5000.00,
-//   "originCityId": "city-atlanta"
-// }
-//
-// Steps:
-//   1. Extract budget and originCityId from req.body
-//   2. Fetch all matches: MatchModel.getAll()
-//   3. Fetch origin city: CityModel.getById(originCityId)
-//   4. Fetch all flight prices from the database
-//   5. Use the BestValueFinder to find the best combination
-//   6. Return the BestValueResult as JSON
-//
-// Hint: Import and use the BestValueFinder from '../bonus/BestValueFinder'
-//
-// ============================================================
-
+// POST /api/route/best-value — Bonus #1
 router.post('/best-value', (req, res) => {
-  // TODO: Replace with your implementation (BONUS)
-  res.status(200).json({});
+  const { budget, originCityId } = req.body; // extract budget and originCityId from the request body
+
+  if (budget == null || !originCityId) {
+    res.status(400).json({ error: 'budget and originCityId are required' }); // error handling for missing budget or originCityId
+    return;
+  }
+
+  const allMatches = MatchModel.getAll(); // retrieve all matches from the model, this will return an array of match objects
+  const originCity = CityModel.getById(originCityId); // retrieve the origin city using the provided originCityId, this will return a city object corresponding to the provided ID
+
+  if (!originCity) {
+    res.status(400).json({ error: 'Invalid originCityId' }); // error handling for invalid originCityId
+    return;
+  }
+
+  const flightPrices = FlightPriceModel.getAll();// retrieve all flight prices from the model, this will return an array of flight price objects
+  const result = findBestValue(allMatches, budget, originCityId, flightPrices, originCity);// use findBestValue function from BestValueFinder utility to calculate the best travel route within the specified budget, passing in all matches, budget, originCityId, flight prices, and origin city
+
+  res.json(result); // return results as Json
 });
 
 export default router;
